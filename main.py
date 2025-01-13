@@ -95,7 +95,7 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
         ]
 
         await callback.message.answer(
-            "Вы можете начать общение с персональным помощником. Напишите свой вопрос:"
+            "Вы можете начать общение с персональным помощником! Напишите свой вопрос:"
         )
 
 # FSM: обработчик имени

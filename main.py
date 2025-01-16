@@ -4,6 +4,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_gigachat.chat_models import GigaChat
 import asyncio
@@ -34,6 +36,9 @@ bot = Bot(token=BOT_TOKEN)
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 
+# Настраиваем планировщик
+scheduler = AsyncIOScheduler()
+
 # Состояния для FSM
 class Registration(StatesGroup):
     name = State()
@@ -53,12 +58,26 @@ def write_to_csv(data: dict):
             writer.writeheader()
         writer.writerow(data)
 
+# Напоминания для пользователя
+async def send_water_reminder():
+    for user_id in user_data:
+        await bot.send_message(user_id, "Не забудьте выпить воды! Это важно для вашего здоровья.")
+
+async def send_exercise_reminder():
+    for user_id in user_data:
+        await bot.send_message(user_id, "Время сделать разминку! Пару минут физической активности улучшат ваше самочувствие.")
+
+async def send_sleep_reminder():
+    for user_id in user_data:
+        await bot.send_message(user_id, "Пора готовиться ко сну! Хороший сон важен для восстановления и энергии.")
+
 # Стартовая клавиатура
 def start_keyboard():
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="Начать регистрацию", callback_data="start_registration")],
             [InlineKeyboardButton(text="Общение с персональным помощником", callback_data="gigachat")],
+            [InlineKeyboardButton(text="Посмотреть расписание напоминаний", callback_data="schedule")]
         ]
     )
 
@@ -97,6 +116,15 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
         await callback.message.answer(
             "Вы можете начать общение с персональным помощником! Напишите свой вопрос:"
         )
+
+    elif callback.data == "schedule":
+        schedule_message = (
+            "Расписание напоминаний:\n"
+            "- Напоминание о питье воды: каждые 30 минут с 8:00 до 20:00.\n"
+            "- Напоминание о разминке: в 10:00, 14:00, 16:00.\n"
+            "- Напоминание о сне: в 22:00."
+        )
+        await callback.message.answer(schedule_message)
 
 # FSM: обработчик имени
 @dp.message(Registration.name)
@@ -199,6 +227,13 @@ async def handle_gigachat(message: Message):
 # Основной блок запуска
 async def main():
     print("Бот запущен!")
+
+    # Добавляем задачи в планировщик
+    scheduler.add_job(send_water_reminder, CronTrigger(hour='8-20', minute='0,30'))  # Каждые 30 минут с 8:00 до 20:00
+    scheduler.add_job(send_exercise_reminder, CronTrigger(hour='10,14,16'))  # В 10:00, 14:00, 16:00
+    scheduler.add_job(send_sleep_reminder, CronTrigger(hour=21, minute=45))  # В 22:00
+
+    scheduler.start()
     await dp.start_polling(bot)
 
 if __name__ == "__main__":

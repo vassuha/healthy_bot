@@ -1,2 +1,6 @@
 aiogram
-langchain-gigachat langchain-community
+apscheduler
+langchain-core
+langchain-gigachat
+langchain-community
+python-dotenv

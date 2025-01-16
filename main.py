@@ -2,6 +2,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -126,6 +127,30 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
         )
         await callback.message.answer(schedule_message)
 
+# Клавиатура для выбора пола
+def gender_keyboard():
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="Мужской")],
+            [KeyboardButton(text="Женский")],
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=True
+    )
+
+# Клавиатура для выбора уровня активности
+def activity_keyboard():
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="Низкий")],
+            [KeyboardButton(text="Средний")],
+            [KeyboardButton(text="Высокий")],
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=True
+    )
+
+
 # FSM: обработчик имени
 @dp.message(Registration.name)
 async def process_name(message: Message, state: FSMContext):
@@ -154,31 +179,36 @@ async def process_height(message: Message, state: FSMContext):
     await state.set_state(Registration.weight)
 
 # FSM: обработчик веса
+# FSM: обработчик веса
 @dp.message(Registration.weight)
 async def process_weight(message: Message, state: FSMContext):
     if not message.text.isdigit():
         await message.answer("Пожалуйста, введите вес числом.")
         return
     await state.update_data(weight=int(message.text))
-    await message.answer("Какой у тебя пол? (мужской/женский)")
+    await message.answer("Какой у тебя пол?", reply_markup=gender_keyboard())
     await state.set_state(Registration.gender)
 
 # FSM: обработчик пола
 @dp.message(Registration.gender)
 async def process_gender(message: Message, state: FSMContext):
     if message.text.lower() not in ["мужской", "женский"]:
-        await message.answer("Пожалуйста, укажите пол: мужской или женский.")
+        await message.answer("Пожалуйста, выберите пол из предложенных вариантов.", reply_markup=gender_keyboard())
         return
     await state.update_data(gender=message.text.lower())
-    await message.answer("Какой у тебя уровень активности? (низкий/средний/высокий)")
+    await message.answer("Какой у тебя уровень активности? (низкий/средний/высокий)", reply_markup=activity_keyboard())
     await state.set_state(Registration.activity)
 
 # FSM: обработчик уровня активности
 @dp.message(Registration.activity)
 async def process_activity(message: Message, state: FSMContext):
-    await state.update_data(activity=message.text)
-    await message.answer("Какая у тебя цель? (например: похудеть, набрать вес, поддерживать форму)")
+    if message.text.lower() not in ["низкий", "средний", "высокий"]:
+        await message.answer("Пожалуйста, выберите уровень активности из предложенных вариантов.", reply_markup=activity_keyboard())
+        return
+    await state.update_data(activity=message.text.lower())
+    await message.answer("Какая у тебя цель? (например: похудеть, набрать вес, поддерживать форму)", reply_markup=ReplyKeyboardRemove())
     await state.set_state(Registration.goal)
+
 
 # FSM: обработчик цели
 @dp.message(Registration.goal)
@@ -204,6 +234,7 @@ async def process_goal(message: Message, state: FSMContext):
         reply_markup=start_keyboard(),
     )
     await state.clear()
+
 
 # Обработчик сообщений для общения с GigaChat
 @dp.message()

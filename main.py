@@ -13,7 +13,7 @@ import asyncio
 import csv
 from pathlib import Path
 
-# Настройка GigaChat
+#Настройка GigaChat
 llm = GigaChat(
     credentials="ODlmNjNiMzQtYmRjYS00MmE5LWI4YTgtNTNjMjQ2ZGYyMWI5OmUwOTFhYzUyLWViNzktNGQzYy04ZjZiLTAwODJlOWFlYjMwMA==",  # Замените на ваш ключ GigaChat
     scope="GIGACHAT_API_PERS",
@@ -22,25 +22,24 @@ llm = GigaChat(
     streaming=False,
 )
 
-# Путь к CSV-файлу
+#Путь к CSV-файлу
 CSV_FILE = Path("user_data.csv")
 
-# Токен Telegram-бота
+#Токен Telegram-бота
 BOT_TOKEN = "7573247715:AAENXOKfSdvr3QMhKpP4oVSDt18iycjob6M"
 
-# Словари для хранения данных
-user_data = {}  # Хранит регистрационные данные пользователей
-user_context = {}  # Хранит контексты для GigaChat
+#Словари для хранения данных
+user_data = {}
+user_context = {}
 
-# Создаем бота и диспетчер
 bot = Bot(token=BOT_TOKEN)
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 
-# Настраиваем планировщик
+#планировщик
 scheduler = AsyncIOScheduler()
 
-# Состояния для FSM
+#Состояния для FSM
 class Registration(StatesGroup):
     name = State()
     age = State()
@@ -50,7 +49,6 @@ class Registration(StatesGroup):
     activity = State()
     goal = State()
 
-# Функция для записи данных в CSV
 def write_to_csv(data: dict):
     file_exists = CSV_FILE.exists()
     with open(CSV_FILE, mode="a", newline="", encoding="utf-8") as file:
@@ -59,7 +57,7 @@ def write_to_csv(data: dict):
             writer.writeheader()
         writer.writerow(data)
 
-# Напоминания для пользователя
+#Напоминания для пользователя
 async def send_water_reminder():
     for user_id in user_data:
         await bot.send_message(user_id, "Не забудьте выпить воды! Это важно для вашего здоровья.")
@@ -72,7 +70,7 @@ async def send_sleep_reminder():
     for user_id in user_data:
         await bot.send_message(user_id, "Пора готовиться ко сну! Хороший сон важен для восстановления и энергии.")
 
-# Стартовая клавиатура
+#Стартовая клавиатура
 def start_keyboard():
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -82,7 +80,6 @@ def start_keyboard():
         ]
     )
 
-# Обработчик команды /start
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
     await message.answer(
@@ -90,7 +87,6 @@ async def cmd_start(message: Message):
         reply_markup=start_keyboard(),
     )
 
-# Обработчик нажатия на кнопки
 @dp.callback_query()
 async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
     if callback.data == "start_registration":
@@ -100,12 +96,11 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
     elif callback.data == "gigachat":
         user_id = callback.from_user.id
 
-        # Проверка регистрации
+        #Проверка регистрации
         if user_id not in user_data:
             await callback.message.answer("Сначала пройдите регистрацию!")
             return
 
-        # Создаем персонализированный контекст для GigaChat
         user_info = user_data[user_id]
         user_context[user_id] = [
             SystemMessage(content=(
@@ -127,7 +122,6 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
         )
         await callback.message.answer(schedule_message)
 
-# Клавиатура для выбора пола
 def gender_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
@@ -138,7 +132,6 @@ def gender_keyboard():
         one_time_keyboard=True
     )
 
-# Клавиатура для выбора уровня активности
 def activity_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
@@ -151,14 +144,14 @@ def activity_keyboard():
     )
 
 
-# FSM: обработчик имени
+#FSM обработчик имени
 @dp.message(Registration.name)
 async def process_name(message: Message, state: FSMContext):
     await state.update_data(name=message.text)
     await message.answer("Сколько тебе лет?")
     await state.set_state(Registration.age)
 
-# FSM: обработчик возраста
+#FSM обработчик возраста
 @dp.message(Registration.age)
 async def process_age(message: Message, state: FSMContext):
     if not message.text.isdigit():
@@ -168,7 +161,7 @@ async def process_age(message: Message, state: FSMContext):
     await message.answer("Какой у тебя рост (в сантиметрах)?")
     await state.set_state(Registration.height)
 
-# FSM: обработчик роста
+#FSM обработчик роста
 @dp.message(Registration.height)
 async def process_height(message: Message, state: FSMContext):
     if not message.text.isdigit():
@@ -178,8 +171,7 @@ async def process_height(message: Message, state: FSMContext):
     await message.answer("Какой у тебя вес (в килограммах)?")
     await state.set_state(Registration.weight)
 
-# FSM: обработчик веса
-# FSM: обработчик веса
+#FSM обработчик веса
 @dp.message(Registration.weight)
 async def process_weight(message: Message, state: FSMContext):
     if not message.text.isdigit():
@@ -189,7 +181,7 @@ async def process_weight(message: Message, state: FSMContext):
     await message.answer("Какой у тебя пол?", reply_markup=gender_keyboard())
     await state.set_state(Registration.gender)
 
-# FSM: обработчик пола
+#FSM обработчик пола
 @dp.message(Registration.gender)
 async def process_gender(message: Message, state: FSMContext):
     if message.text.lower() not in ["мужской", "женский"]:
@@ -199,7 +191,7 @@ async def process_gender(message: Message, state: FSMContext):
     await message.answer("Какой у тебя уровень активности? (низкий/средний/высокий)", reply_markup=activity_keyboard())
     await state.set_state(Registration.activity)
 
-# FSM: обработчик уровня активности
+#FSM обработчик уровня активности
 @dp.message(Registration.activity)
 async def process_activity(message: Message, state: FSMContext):
     if message.text.lower() not in ["низкий", "средний", "высокий"]:
@@ -210,7 +202,7 @@ async def process_activity(message: Message, state: FSMContext):
     await state.set_state(Registration.goal)
 
 
-# FSM: обработчик цели
+#FSM обработчик цели
 @dp.message(Registration.goal)
 async def process_goal(message: Message, state: FSMContext):
     data = await state.get_data()
@@ -218,7 +210,6 @@ async def process_goal(message: Message, state: FSMContext):
     data["goal"] = message.text
     data["user_id"] = user_id
 
-    # Сохраняем данные в словарь и CSV
     user_data[user_id] = data
     write_to_csv(data)
 
@@ -235,8 +226,6 @@ async def process_goal(message: Message, state: FSMContext):
     )
     await state.clear()
 
-
-# Обработчик сообщений для общения с GigaChat
 @dp.message()
 async def handle_gigachat(message: Message):
     user_id = message.from_user.id
@@ -255,11 +244,9 @@ async def handle_gigachat(message: Message):
         await message.answer("Произошла ошибка при общении с персональным помощником.")
         print(f"Ошибка: {e}")
 
-# Основной блок запуска
 async def main():
     print("Бот запущен!")
 
-    # Добавляем задачи в планировщик
     scheduler.add_job(send_water_reminder, CronTrigger(hour='8-20', minute='0,30'))  # Каждые 30 минут с 8:00 до 20:00
     scheduler.add_job(send_exercise_reminder, CronTrigger(hour='10,14,16'))  # В 10:00, 14:00, 16:00
     scheduler.add_job(send_sleep_reminder, CronTrigger(hour=21, minute=45))  # В 22:00
